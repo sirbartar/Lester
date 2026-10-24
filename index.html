@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>20230011 · HSK4 Prototype</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#08060f;
+  --panel:rgba(10,8,20,.88);
+  --orange:#ff4d00;
+  --magenta:#ff2d78;
+  --cyan:#00e5ff;
+  --violet:#7c4dff;
+  --green:#00ff9d;
+  --red:#ff3d5a;
+  --yellow:#ffd60a;
+  --text:#f3f4ff;
+  --muted:#a7abc9;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+
+body{
+  font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+}
+
+.hanzi,.hanzi-text,.order-part .txt,.chip .hanzi,.lesson-title,.mode-card .zh,.q-prompt-hanzi,.build-chip,.option-hanzi,.study-word,ruby,.vocab-circle-hanzi,.word-detail-hanzi,.word-detail-example-cn,.mistake-question,.lesson-card-title,.lesson-card-number{
+  font-family:"Ma Shan Zheng","Kaiti SC","KaiTi","STKaiti","SimSun",serif !important;
+  letter-spacing:.03em;
+}
+
+ruby{ruby-position:over}
+rt{
+  font-family:"Avenir Next","Segoe UI",system-ui,sans-serif !important;
+  font-size:.5em;font-weight:700;color:#9ff3ff;letter-spacing:0;line-height:1;
+}
+body.no-pinyin rt{display:none !important}
+
+.blob{position:fixed;border-radius:50%;filter:blur(90px);opacity:.42;z-index:0;pointer-events:none;mix-blend-mode:screen}
+.b1{width:55vmax;height:55vmax;background:radial-gradient(circle,#ff4d00,transparent 60%);top:-20vmax;left:-15vmax;animation:drift1 18s ease-in-out infinite alternate}
+.b2{width:50vmax;height:50vmax;background:radial-gradient(circle,#7c4dff,transparent 60%);bottom:-20vmax;right:-15vmax;animation:drift2 22s ease-in-out infinite alternate}
+.b3{width:40vmax;height:40vmax;background:radial-gradient(circle,#00e5ff,transparent 60%);top:40%;left:55%;opacity:.25;animation:drift3 20s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate(12vw,10vh) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-10vw,-12vh) scale(1.2)}}
+@keyframes drift3{to{transform:translate(-14vw,8vh) scale(.85)}}
+
+.hidden{display:none !important}
+
+.screen{
+  position:relative;z-index:2;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:98px 20px 40px;
+}
+.center{justify-content:center}
+
+/* ============ NAME RAIN BACKGROUND ============ */
+#nameRain{
+  position:fixed;inset:0;z-index:1;pointer-events:none;overflow:hidden;
+  opacity:.08;
+}
+.rain-drop{
+  position:absolute;
+  font-family:"ZCOOL KuaiLe","Ma Shan Zheng",cursive,serif;
+  white-space:nowrap;
+  user-select:none;
+  animation:rainFall linear infinite;
+  will-change:transform;
+  text-shadow:0 0 8px currentColor;
+}
+@keyframes rainFall{
+  0%{transform:translateY(-100px) rotate(var(--rot,0deg));opacity:0}
+  10%{opacity:1}
+  90%{opacity:1}
+  100%{transform:translateY(calc(100vh + 100px)) rotate(var(--rot,0deg));opacity:0}
+}
+
+/* ============ INTRO ============ */
+#introScreen{overflow:hidden;background:#050308;transition:opacity .8s,transform .8s}
+#introScreen.out{opacity:0;transform:scale(1.05);pointer-events:none}
+
+.scanlines{
+  position:absolute;inset:0;z-index:4;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.25) 0 2px,transparent 2px 4px);
+  mix-blend-mode:overlay;opacity:.35;
+}
+
+.intro-grid{
+  position:absolute;inset:0;z-index:3;pointer-events:none;
+  background-image:linear-gradient(rgba(0,229,255,.03) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(0,229,255,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+  opacity:.4;
+}
+
+.digit-row{
+  position:relative;z-index:5;display:flex;gap:clamp(4px,1.5vw,12px);
+  justify-content:center;align-items:center;min-height:1.3em;
+}
+.digit{
+  font-size:clamp(48px,12vw,120px);font-weight:900;line-height:1;
+  background:linear-gradient(180deg,var(--cyan),var(--violet));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 24px rgba(0,229,255,.35));
+  opacity:0;
+  transform:translateY(-40px) scale(0.95);
+  animation:digitSlideIn 2s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation-delay:var(--d);
+  will-change:transform,opacity;
+}
+@keyframes digitSlideIn{
+  0%{opacity:0;transform:translateY(-40px) scale(0.95)}
+  100%{opacity:1;transform:translateY(0) scale(1)}
+}
+
+.digit.assembled{
+  animation:digitGlow 4s ease-in-out infinite;
+}
+@keyframes digitGlow{
+  0%,100%{filter:drop-shadow(0 0 20px rgba(0,229,255,.3))}
+  50%{filter:drop-shadow(0 0 35px rgba(124,77,255,.5))}
+}
+
+#introSub{
+  position:relative;z-index:5;margin-top:32px;
+  font-family:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  font-size:clamp(12px,2.2vw,16px);letter-spacing:.4em;color:var(--cyan);
+  white-space:nowrap;opacity:0;
+  text-shadow:0 0 16px rgba(0,229,255,.5);
+  animation:fadeInSubtitle 1.5s ease-out 3.5s forwards;
+}
+@keyframes fadeInSubtitle{to{opacity:1}}
+
+.intro-skip{position:relative;z-index:5;margin-top:48px;opacity:0;animation:fadeIn 1s ease-out 4.5s forwards}
+@keyframes fadeIn{to{opacity:.7}}
+
+.intro-flash{position:absolute;inset:0;z-index:10;background:linear-gradient(180deg,rgba(0,229,255,.08),transparent);opacity:0;pointer-events:none}
+.intro-flash.go{animation:elegantFlash 1.5s ease-out}
+@keyframes elegantFlash{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+
+/* ============ 3D LESSON CARDS - SIDE BY SIDE ============ */
+.lesson-cards-3d{
+  perspective:1200px;
+  perspective-origin:50% 50%;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:28px;
+  margin:28px 0;
+  width:min(900px,100%);
+}
+
+.lesson-card-3d{
+  position:relative;
+  width:100%;
+  min-height:240px;
+  transform-style:preserve-3d;
+  transition:transform .6s cubic-bezier(0.16,1,0.3,1);
+  cursor:pointer;
+}
+
+.lesson-card-3d:nth-child(1){
+  animation:card3dFloat1 7s ease-in-out infinite;
+}
+.lesson-card-3d:nth-child(2){
+  animation:card3dFloat2 7s ease-in-out infinite;
+  animation-delay:-3.5s;
+}
+
+@keyframes card3dFloat1{
+  0%,100%{transform:rotateY(-4deg) rotateX(3deg)}
+  50%{transform:rotateY(4deg) rotateX(-3deg)}
+}
+@keyframes card3dFloat2{
+  0%,100%{transform:rotateY(4deg) rotateX(-3deg)}
+  50%{transform:rotateY(-4deg) rotateX(3deg)}
+}
+
+.lesson-card-3d:hover{
+  animation-play-state:paused;
+  transform:rotateY(-10deg) rotateX(5deg) translateZ(30px) scale(1.03) !important;
+}
+
+.lesson-card-face{
+  position:relative;
+  border-radius:24px;
+  padding:28px 26px;
+  background:linear-gradient(135deg,rgba(10,8,25,.92),rgba(20,12,38,.92));
+  border:1px solid rgba(0,229,255,.2);
+  box-shadow:
+    0 0 40px rgba(0,229,255,.08),
+    0 20px 60px rgba(0,0,0,.4),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  transform-style:preserve-3d;
+  overflow:hidden;
+  height:100%;
+}
+
+.lesson-card-face::before{
+  content:"";
+  position:absolute;
+  top:0;left:0;right:0;
+  height:3px;
+  background:linear-gradient(90deg,var(--orange),var(--magenta),var(--violet),var(--cyan));
+  border-radius:24px 24px 0 0;
+}
+
+.lesson-card-face::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg,rgba(0,229,255,.03),transparent 50%);
+  pointer-events:none;
+}
+
+.lesson-card-number{
+  font-size:13px;
+  font-weight:900;
+  color:var(--cyan);
+  letter-spacing:.2em;
+  margin-bottom:10px;
+  text-transform:uppercase;
+}
+
+.lesson-card-title{
+  font-size:30px;
+  line-height:1.3;
+  margin-bottom:12px;
+  color:var(--text);
+}
+
+.lesson-card-sub{
+  font-size:14px;
+  color:var(--muted);
+  line-height:1.5;
+  margin-bottom:16px;
+}
+
+.lesson-card-chips{
+  display:flex;gap:8px;flex-wrap:wrap;
+}
+.lesson-card-chip{
+  padding:6px 12px;
+  border-radius:12px;
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);
+  text-align:center;
+  min-width:60px;
+}
+.lesson-card-chip .hanzi{
+  font-size:18px;
+  display:block;
+}
+.lesson-card-chip .pinyin{
+  font-size:10px;
+  color:#9ff3ff;
+  display:block;
+  margin-top:2px;
+}
+
+/* Card side depth effect */
+.lesson-card-3d::before{
+  content:"";
+  position:absolute;
+  top:8px;bottom:8px;
+  right:-6px;
+  width:6px;
+  background:linear-gradient(180deg,rgba(0,229,255,.15),rgba(124,77,255,.15));
+  border-radius:0 4px 4px 0;
+  transform:rotateY(90deg);
+  transform-origin:left;
+}
+.lesson-card-3d::after{
+  content:"";
+  position:absolute;
+  left:8px;right:8px;
+  bottom:-6px;
+  height:6px;
+  background:linear-gradient(90deg,rgba(124,77,255,.15),rgba(0,229,255,.15));
+  border-radius:0 0 4px 4px;
+  transform:rotateX(-90deg);
+  transform-origin:top;
+}
+
+/* ============ CIRCULAR VOCABULARY ============ */
+.vocab-circle-container{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:32px;margin:32px 0;justify-items:center;
+  max-width:900px;
+}
+
+.vocab-circle{
+  position:relative;width:180px;height:180px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(0,229,255,.12),rgba(124,77,255,.12));
+  border:2px solid rgba(0,229,255,.3);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  box-shadow:0 0 40px rgba(0,229,255,.1),inset 0 0 40px rgba(0,229,255,.05);
+  transition:all .5s cubic-bezier(0.16,1,0.3,1);
+  cursor:pointer;
+  animation:circleFloat 6s ease-in-out infinite;
+  animation-delay:calc(var(--i,0) * 0.15s);
+}
+
+.vocab-circle:nth-child(1){--i:0}
+.vocab-circle:nth-child(2){--i:1}
+.vocab-circle:nth-child(3){--i:2}
+.vocab-circle:nth-child(4){--i:3}
+.vocab-circle:nth-child(5){--i:4}
+.vocab-circle:nth-child(6){--i:5}
+.vocab-circle:nth-child(7){--i:6}
+.vocab-circle:nth-child(8){--i:7}
+.vocab-circle:nth-child(9){--i:8}
+.vocab-circle:nth-child(10){--i:9}
+
+@keyframes circleFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-8px)}
+}
+
+.vocab-circle:hover{
+  transform:scale(1.1) translateY(-4px);
+  border-color:rgba(0,229,255,.7);
+  box-shadow:0 0 80px rgba(0,229,255,.3),inset 0 0 60px rgba(0,229,255,.12);
+}
+
+.vocab-circle-hanzi{
+  font-size:42px;line-height:1;margin-bottom:8px;
+}
+
+.vocab-circle-pinyin{
+  font-size:14px;color:#9ff3ff;font-weight:600;letter-spacing:.05em;
+}
+
+/* ============ WORD DETAIL VIEW ============ */
+.word-detail-overlay{
+  position:fixed;inset:0;z-index:50;
+  background:rgba(5,3,10,.92);backdrop-filter:blur(20px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .4s ease;
+}
+.word-detail-overlay.active{opacity:1;pointer-events:auto}
+
+.word-detail-card{
+  width:min(640px,90vw);padding:44px 36px;
+  border-radius:28px;
+  background:linear-gradient(135deg,rgba(10,8,25,.95),rgba(20,10,35,.95));
+  border:1px solid rgba(0,229,255,.2);
+  box-shadow:0 0 80px rgba(0,229,255,.1);
+  text-align:center;
+  transform:scale(0.9);
+  transition:transform .4s cubic-bezier(0.16,1,0.3,1);
+}
+.word-detail-overlay.active .word-detail-card{transform:scale(1)}
+
+.word-detail-hanzi{
+  font-size:clamp(60px,11vw,88px);
+  margin-bottom:14px;
+}
+
+.word-detail-pinyin{
+  font-size:24px;color:#9ff3ff;font-weight:700;
+  margin-bottom:10px;letter-spacing:.1em;
+}
+
+.word-detail-meaning{
+  font-size:22px;color:var(--yellow);font-weight:800;
+  margin-bottom:32px;
+}
+
+.word-detail-examples{
+  text-align:left;
+}
+
+.word-detail-example{
+  padding:18px;border-radius:16px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  margin-bottom:16px;
+}
+
+.word-detail-example-label{
+  font-size:11px;color:var(--cyan);font-weight:800;
+  letter-spacing:.15em;text-transform:uppercase;
+  margin-bottom:10px;
+}
+
+.word-detail-example-cn{
+  font-size:22px;line-height:1.9;margin-bottom:8px;
+}
+
+.word-detail-example-en{
+  font-size:15px;color:var(--muted);line-height:1.5;
+}
+
+.word-detail-back{
+  margin-top:28px;
+}
+
+/* ============ HUD ============ */
+#hud{
+  position:fixed;top:0;left:0;right:0;z-index:20;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:12px 16px;background:rgba(5,4,10,.72);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.08);
+}
+.hud-left,.hud-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hud-brand{font-weight:900;color:var(--cyan);letter-spacing:.12em}
+.hud-user{color:var(--muted);font-size:14px}
+.hud-lesson{color:var(--yellow);font-weight:800;font-size:14px}
+
+.timer-pill{
+  min-width:72px;text-align:center;padding:7px 12px;border-radius:999px;
+  font-weight:900;color:var(--green);
+  border:1px solid rgba(0,255,157,.35);background:rgba(0,255,157,.08);
+}
+.timer-pill.low{color:var(--red);border-color:rgba(255,61,90,.45);background:rgba(255,61,90,.1);animation:pulse 1s infinite}
+.timer-pill.off{color:var(--muted);border-color:rgba(167,171,201,.3);background:rgba(167,171,201,.08)}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+
+.toggle{
+  border:none;cursor:pointer;border-radius:999px;padding:8px 13px;font-weight:900;
+  color:#767b9d;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);transition:.2s;
+}
+.toggle.on{color:#fff;border-color:rgba(0,229,255,.5);background:rgba(0,229,255,.12);box-shadow:0 0 18px rgba(0,229,255,.15)}
+
+.big-title{
+  font-size:clamp(36px,7vw,68px);font-weight:900;text-align:center;
+  background:linear-gradient(90deg,var(--orange),var(--magenta),var(--violet),var(--cyan));
+  -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:14px;
+}
+.screen-title{font-size:clamp(28px,5vw,44px);font-weight:900;margin-bottom:18px;text-align:center}
+.subtle{color:var(--muted);line-height:1.7;text-align:center;max-width:720px}
+
+.btn{
+  position:relative;border:none;cursor:pointer;color:#fff;font-weight:900;letter-spacing:.1em;
+  padding:15px 32px;font-size:16px;border-radius:999px;text-transform:uppercase;
+  background:linear-gradient(90deg,var(--orange),var(--magenta),var(--violet));
+  background-size:200% 100%;
+  box-shadow:0 0 0 1px rgba(255,255,255,.15) inset,0 10px 40px rgba(255,45,120,.25);
+  transition:transform .2s,box-shadow .2s,background-position .5s;
+}
+.btn:hover{transform:translateY(-2px) scale(1.03);background-position:100% 0}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:rgba(255,255,255,.07);box-shadow:0 0 0 1px rgba(255,255,255,.18) inset}
+.btn.small{padding:11px 20px;font-size:14px}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none !important}
+
+input[type=text]{
+  width:min(480px,100%);padding:16px 18px;border-radius:16px;
+  border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);
+  color:#fff;font-size:18px;outline:none;margin:18px 0;text-align:center;
+}
+
+.row{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:20px}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;justify-content:center}
+.chip{position:relative;padding:8px 11px;border-radius:14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);min-width:64px;text-align:center}
+.chip .hanzi{font-size:22px;display:block}
+
+.pinyin-helper{display:block;margin-top:4px;color:#9ff3ff;font-size:11px;line-height:1.25}
+.english-helper{display:block;margin-top:2px;color:#ffd7ea;font-size:11px;line-height:1.25}
+body.no-pinyin .pinyin-helper{display:none !important}
+body.no-english .english-helper{display:none !important}
+
+.quiz-top{width:min(820px,100%);display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.mode-label{font-weight:900;color:var(--cyan);letter-spacing:.08em}
+.q-label{color:var(--muted);font-weight:800}
+
+.quiz-card{width:min(820px,100%);border-radius:26px;padding:2px;overflow:hidden;position:relative}
+.quiz-card::before{content:"";position:absolute;inset:-160%;background:conic-gradient(var(--orange),var(--magenta),var(--violet),var(--cyan),var(--orange));animation:rotate360 5s linear infinite;opacity:.45}
+.quiz-card-inner{position:relative;border-radius:24px;background:var(--panel);backdrop-filter:blur(16px);padding:28px 24px}
+@keyframes rotate360{to{transform:rotate(360deg)}}
+
+.q-sub{color:var(--muted);margin:10px 0 18px;line-height:1.6}
+.q-prompt-hanzi{font-size:clamp(42px,7vw,64px);line-height:1.2;text-align:center;margin-top:6px}
+.q-text{font-size:clamp(20px,3vw,27px);line-height:2.4}
+.blank{color:var(--cyan);font-weight:900}
+.passage{
+  padding:16px;border-radius:16px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  font-size:clamp(18px,2.6vw,23px);line-height:2.5;margin-bottom:14px;
+}
+
+.options{display:grid;gap:12px;margin-top:18px}
+.opt{
+  display:flex;align-items:center;gap:14px;text-align:left;cursor:pointer;
+  padding:14px 16px;border-radius:16px;font-size:16px;font-weight:600;color:#e8eaff;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  transition:transform .18s,background .18s,border-color .18s,box-shadow .18s;
+}
+.opt:hover:not(:disabled){transform:translateX(6px);background:rgba(255,255,255,.1);border-color:rgba(0,229,255,.5);box-shadow:0 0 20px rgba(0,229,255,.15)}
+.opt:disabled{cursor:default}
+.opt .badge{flex:none;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;font-weight:900;font-size:14px;background:linear-gradient(135deg,rgba(255,77,0,.25),rgba(124,77,255,.25));border:1px solid rgba(255,255,255,.15)}
+.opt.correct{background:rgba(0,255,157,.14);border-color:var(--green);box-shadow:0 0 24px rgba(0,255,157,.35)}
+.opt.wrong{background:rgba(255,61,90,.14);border-color:var(--red);box-shadow:0 0 24px rgba(255,61,90,.35)}
+.opt.dim{opacity:.4}
+.opt-content{display:flex;flex-direction:column;gap:3px}
+.option-hanzi{font-size:24px;line-height:1.9}
+
+.feedback{margin-top:18px;border-radius:14px;padding:14px 16px;font-size:14px;line-height:1.6;background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.25);color:#c9f6ff}
+.feedback.good{background:rgba(0,255,157,.08);border-color:rgba(0,255,157,.3)}
+.feedback.bad{background:rgba(255,61,90,.08);border-color:rgba(255,61,90,.3)}
+.feedback .verdict{font-weight:900;letter-spacing:.1em;margin-bottom:5px}
+.feedback.good .verdict{color:var(--green)}
+.feedback.bad .verdict{color:var(--red)}
+
+.order-parts{display:grid;gap:12px;margin-top:18px}
+.order-part{
+  display:flex;gap:14px;align-items:flex-start;width:100%;text-align:left;
+  padding:14px 16px;border-radius:16px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);color:var(--text);cursor:pointer;
+  font-size:20px;line-height:2.3;transition:.18s;
+}
+.order-part:hover{background:rgba(255,255,255,.1);border-color:rgba(0,229,255,.4)}
+.order-part.selected{background:rgba(124,77,255,.16);border-color:rgba(124,77,255,.55);box-shadow:0 0 20px rgba(124,77,255,.18)}
+.order-seq{margin-top:16px;font-size:24px;font-weight:900;letter-spacing:.2em;color:var(--yellow);min-height:34px}
+
+.build-answer{
+  min-height:92px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+  padding:16px;border-radius:18px;background:rgba(255,255,255,.04);
+  border:1px dashed rgba(255,255,255,.18);margin-bottom:16px;
+}
+.build-placeholder{color:var(--muted);font-size:14px}
+.build-bank{display:flex;flex-wrap:wrap;gap:10px}
+.build-chip{
+  border:none;cursor:pointer;padding:12px 16px;border-radius:14px;
+  font-size:26px;line-height:1.6;color:#fff;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.14);transition:.18s;
+}
+.build-chip:hover{transform:translateY(-2px);border-color:rgba(0,229,255,.45);box-shadow:0 0 18px rgba(0,229,255,.12)}
+.build-chip.placed{background:rgba(0,229,255,.12);border-color:rgba(0,229,255,.35)}
+
+.result-stats{width:min(760px,100%);display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:22px 0}
+.stat{padding:18px 14px;border-radius:18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);text-align:center}
+.stat .num{font-size:34px;font-weight:900;color:var(--yellow)}
+.stat .label{margin-top:6px;color:var(--muted);font-size:13px}
+
+.mistakes{width:min(760px,100%);margin-top:14px;padding:24px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09)}
+.mistakes h3{margin-bottom:18px;color:var(--red);font-size:20px}
+
+.mistake-item{
+  padding:18px;border-radius:14px;
+  background:rgba(255,61,90,.06);
+  border:1px solid rgba(255,61,90,.15);
+  margin-bottom:14px;
+}
+.mistake-item:last-child{margin-bottom:0}
+
+.mistake-question{
+  font-size:18px;line-height:1.8;margin-bottom:10px;color:var(--text);
+}
+
+.mistake-question-en{
+  font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:12px;
+  font-style:italic;
+}
+
+.mistake-answers{
+  display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;
+  font-size:14px;
+}
+.mistake-your-answer{color:var(--red);font-weight:700}
+.mistake-correct-answer{color:var(--green);font-weight:700}
+
+.mistake-explanation{
+  font-size:13px;color:var(--muted);line-height:1.6;
+  padding-top:12px;border-top:1px solid rgba(255,255,255,.06);
+}
+
+.mistake-mode-label{
+  font-size:11px;color:var(--cyan);font-weight:800;
+  letter-spacing:.15em;text-transform:uppercase;
+  margin-bottom:10px;
+}
+
+/* ============ DUAL LEADERBOARDS ============ */
+.lb-dual{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+  width:min(900px,100%);
+  margin-top:28px;
+}
+
+.lb-panel{
+  padding:20px;
+  border-radius:20px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.09);
+}
+
+.lb-panel h3{
+  margin-bottom:14px;
+  color:var(--cyan);
+  font-size:16px;
+  letter-spacing:.05em;
+}
+
+.lb-row{
+  display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:8px;font-size:14px;
+}
+.lb-row.me{background:rgba(0,229,255,.12);border-color:rgba(0,229,255,.45);box-shadow:0 0 18px rgba(0,229,255,.15)}
+.lb-rank{width:36px;font-weight:900;color:var(--yellow);font-size:14px}
+.lb-name{flex:1;font-weight:700}
+.lb-score{font-weight:900;color:var(--green);font-size:14px}
+.lb-acc{width:44px;text-align:right;color:var(--muted);font-size:13px}
+.lb-note{color:var(--muted);font-size:12px;margin-top:8px}
+
+.trans-big{
+  font-size:clamp(38px,7vw,70px);font-weight:900;text-align:center;
+  background:linear-gradient(90deg,var(--cyan),var(--magenta));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+
+.timer-toggle-container{
+  display:flex;align-items:center;gap:14px;
+  padding:14px 20px;border-radius:16px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  margin:16px auto;max-width:360px;
+}
+.timer-toggle-label{font-size:14px;font-weight:700;color:var(--text)}
+.timer-toggle-switch{
+  position:relative;width:52px;height:28px;
+  background:rgba(255,255,255,.1);border-radius:14px;
+  cursor:pointer;transition:background .3s;
+  border:1px solid rgba(255,255,255,.15);
+}
+.timer-toggle-switch.on{background:rgba(0,229,255,.25);border-color:rgba(0,229,255,.5)}
+.timer-toggle-switch::after{
+  content:"";position:absolute;top:3px;left:3px;
+  width:20px;height:20px;border-radius:50%;
+  background:#fff;transition:transform .3s;
+}
+.timer-toggle-switch.on::after{transform:translateX(24px)}
+
+@keyframes pop{from{opacity:0;transform:translateY(24px) scale(.92)}to{opacity:1;transform:none}}
+
+@media (max-width:700px){
+  .lb-dual{grid-template-columns:1fr}
+  .lesson-cards-3d{grid-template-columns:1fr}
+  .screen{padding-top:112px}
+  .quiz-card-inner{padding:22px 16px}
+  .option-hanzi{font-size:21px}
+  .build-chip{font-size:22px}
+  .vocab-circle{width:140px;height:140px}
+  .vocab-circle-hanzi{font-size:34px}
+  .vocab-circle-container{gap:20px}
+  .lesson-card-3d:hover{transform:rotateY(-4deg) rotateX(2deg) translateZ(10px) !important}
+}
+</style>
+</head>
+<body>
+
+<div class="blob b1"></div>
+<div class="blob b2"></div>
+<div class="blob b3"></div>
+
+<!-- NAME RAIN BACKGROUND -->
+<div id="nameRain"></div>
+
+<div id="hud" class="hidden">
+  <div class="hud-left">
+    <span class="hud-brand">20230011</span>
+    <span class="hud-user" id="hudUser"></span>
+    <span class="hud-lesson" id="hudLesson"></span>
+  </div>
+  <div class="hud-right">
+    <div class="timer-pill hidden" id="timerPill"><span id="timeVal">120</span>s</div>
+    <button class="toggle on" id="pyToggle">拼</button>
+    <button class="toggle on" id="enToggle">英</button>
+  </div>
+</div>
+
+<section class="screen center" id="introScreen">
+  <div class="intro-grid"></div>
+  <div class="scanlines"></div>
+  <div class="digit-row" id="digitRow"></div>
+  <div id="introSub">HSK4 · LESSON CHALLENGE</div>
+  <div class="intro-flash" id="introFlash"></div>
+  <div class="row intro-skip"><button class="btn ghost small" onclick="goName()">Skip</button></div>
+</section>
+
+<section class="screen center hidden" id="nameScreen">
+  <div class="big-title">20230011</div>
+  <input type="text" id="nameInput" placeholder="Enter your name" />
+  <button class="btn" onclick="saveName()">Enter</button>
+</section>
+
+<section class="screen hidden" id="lessonScreen">
+  <h2 class="screen-title hanzi">Select Lesson</h2>
+  <div class="subtle">Choose a lesson to begin your HSK 4 challenge.</div>
+  <div class="lesson-cards-3d" id="lessonCards3d"></div>
+  <div class="lb-dual hidden" id="lbDual"></div>
+</section>
+
+<section class="screen hidden" id="lessonDetailScreen">
+  <div id="lessonDetail" style="width:min(900px,100%);"></div>
+  <div class="timer-toggle-container">
+    <span class="timer-toggle-label"> Timer</span>
+    <div class="timer-toggle-switch on" id="timerToggle" onclick="toggleTimerSetting()"></div>
+  </div>
+  <div class="row">
+    <button class="btn" onclick="startChallenge()">Start Challenge</button>
+    <button class="btn ghost" onclick="goLessons()">← Back to Lessons</button>
+  </div>
+</section>
+
+<!-- WORD DETAIL OVERLAY -->
+<div class="word-detail-overlay" id="wordDetailOverlay">
+  <div class="word-detail-card">
+    <div class="word-detail-hanzi hanzi" id="wordDetailHanzi"></div>
+    <div class="word-detail-pinyin" id="wordDetailPinyin"></div>
+    <div class="word-detail-meaning" id="wordDetailMeaning"></div>
+    <div class="word-detail-examples" id="wordDetailExamples"></div>
+    <div class="word-detail-back">
+      <button class="btn ghost small" onclick="closeWordDetail()">← Back to Vocabulary</button>
+    </div>
+  </div>
+</div>
+
+<section class="screen hidden" id="quizScreen">
+  <div class="quiz-top">
+    <div class="mode-label" id="modeLabel"></div>
+    <div class="q-label" id="qLabel"></div>
+  </div>
+  <div class="quiz-card">
+    <div class="quiz-card-inner">
+      <div id="questionArea"></div>
+      <div id="options" class="options"></div>
+      <div id="feedback" class="feedback hidden"></div>
+    </div>
+  </div>
+  <div class="row" id="actionArea"></div>
+</section>
+
+<section class="screen center hidden" id="transitionScreen">
+  <div class="trans-big hanzi" id="transText"></div>
+  <div class="subtle" id="transSub"></div>
+</section>
+
+<section class="screen center hidden" id="resultScreen">
+  <h2 class="screen-title hanzi" id="resultTitle">Challenge Complete</h2>
+  <div class="subtle" id="resultSub"></div>
+  <div class="result-stats" id="resultStats"></div>
+  <div class="mistakes hidden" id="mistakeArea"></div>
+  <div class="row">
+    <button class="btn" onclick="retryLesson()">Retry</button>
+    <button class="btn ghost" onclick="goLessons()">Lessons</button>
+    <button class="btn ghost" onclick="goToName()">Change Name</button>
+  </div>
+</section>
+
+<script>
+const PY_SRC = "我:wǒ 们:men 原:yuán 计:jì 划:huà 去:qù 打:dǎ 篮:lán 球:qiú 的:de 可:kě 是:shì 忽:hū 然:rán 刮:guā 起:q 了:le 大:dà 风:fēng 现:xiàn 在:zài 留:liú 家:jiā 里:lǐ 上:shàng 网:wǎng 跟:gēn 你:nǐ 正:zhèng 相:xiāng 反:fǎn 感:gǎn 觉:jué 什:shén 么:me 都:dōu 说:shuō 却:què 一:yì 点:diǎn 笨:bèn 人:rén 总:zǒng 把:bǎ 简:jiǎn 单:dān 问:wèn 题:tí 复:fù 杂:zá 聪:cōng 明:míng 能:néng 解:jiě 释:shì 得:de 清:qīng 楚:ch 建:jiàn 议:yì 暂:zàn 时:shí 先:xiān 别:bié 考:kǎo 虑:lǜ 出:chū 国:guó 学:xué 至:zhì 少:shǎo 外:wài 语:yǔ 和:hé 交:jiāo 流:liú 会:huì 有:yǒu 困:kùn 难:nán 身:shēn 边:biān 图:tú 书:shū 越:yuè 来:lái 多:duō 选:xuǎn 择:zé 其:qí 中:zhōng 特:tè 兴:xìng 趣:qù 阅:yuè 读:dú 每:měi 个:gè 间:jiān 限:xiàn 对:duì 自:zì 己:j 就:jiù 没:méi 帮:bāng 助:zhù 不:bù 完:wán 全:quán 信:xìn 应:yīng 该:gāi 想:xing 判:pàn 断:duàn 些:xiē 以:yǐ 很:hěn 快:kuài 地:dì 需:xū 要:yào 花:huā 认:rèn 真:zhēn 这:zhè 样:yàng 但:dàn 使:shǐ 生:shēng 增:zēng 长:zhǎng 知:zhī 识:shí 还:hái 提:tí 高:gāo 他:tā 理:l 力:lì 写:xiě 作:zuò 水:shuǐ 平:píng 养:yǎng 成:chéng 课:kè 习:xí 惯:guàn 重:zhòng 喜:x 欢:huān 本:běn 看:kàn 月:yuè 才:cái 到:dào 第:dì 页:yè 也:yě 许:xǔ 因:yīn 为:wèi 工:gōng 太:tài 忙:máng 真:zhēn 爱:ài 找:zhǎo 刚:gāng 收:shōu 王:wáng 校:xiào 长:zhng 发:fā 给:gěi 电:diàn 子:z 邮:yóu 件:jiàn 最:zuì 近:jìn 病:bìng 咳:ké 嗽:sòu 医:yī 让:ràng 休:xiū 息:xī 翻:fān 译:yì 关:guān 于:yú 中:zhōng 历:lì 史:sh 日:rì 午:wǔ 体:tǐ 育:yù 馆:gun 羽:y 毛:máo 丢:diū 咖:kā 啡:fēi 色:sè 包:bāo 面:miàn 笔:bǐ 记:jì 脑:nǎo 钥:yào 匙:shi 几:j 杂:zá 志:zhì 请:qǐng 拿:ná 与:yǔ 联:lián 系:xì 非:fēi 常:cháng 谢:xiè 两:liǎng 必:bì 须:xū 注:zhù 意:yì 富:fù 活:huó 精:jīng 彩:cǎi 二:èr 并:bìng 且:qiě 接:jiē 受:shòu 错:cuò 确:què 坚:jiān 持:chí 法:fǎ 否:fǒu 则:zé 只:zhǐ 好:hǎo 顺:shùn 序:xù 温:wēn 度:dù 厉:lì 害:hài 著:zhù 名:míng 猜:cāi 任:rèn 务:wù 引:yǐn 起:qǐ 规:guī 定:dìng 商:shāng 量:liang 见:jiàn 气:qì 朋:péng 友:yǒu 永:yng 远:yun 互:hù 支:zhī 之:zhī 如:rú 果:gu 缺:quē 误:wù 主:zhǔ 做:zuò 门:mén 候:hou 天:tiān 半:bàn 路:lù 突:tū 下:xià 雨:yǔ 儿:ér 停:tíng 思:sī 种:zhǒng 情:qíng 直:zhí 谁:shéi 改:gǎi 变:biàn 新:xīn 命:mìng 老:lǎo 死:s 决:jué 及:jí 常:cháng 谊:yì 久:jiǔ 够:gòu 继:jì 续:xù 希:xī 望:wàng 故:gù 事:shì 光:guāng 带:dài 乐:lè 教:jiào 笑:xiào 过:guò 座:zuò 楼:lóu 共:gòng 节:jié 约:yuē 您:nín 号:hào 梯:tī 西:xī 坐:zuò 叶:yè 草:cǎo 般:bān 叫:jiào 四:sì 幸:xìng 福:fú 买:mǎi 鞋:xié 穿:chuān 回:huí 答:dá 店:diàn 价:jià 格:gé 呢:ne 忘:wàng 合:hé 脚:jiǎo 舒:shū 服:fu 管:guǎn 适:shì 树:shù 掉:diào 已:yǐ 经:jīng 态:tài 友:yu 分:fēn 钟:zhōng 它:tā 实:shí 小:xiǎo 用:yòng 前:qián 仔:zǐ 细:xì 百:bǎi 减:jiǎn 轻:qīng 压:yā 方:fāng 效:xiào 子:zi 陪:péi 同:tóng 岁:suì 童:tóng 尽:jǐn 搬:bān 利:lì 邀:yāo 演:yǎn 按:àn 照:zhào 班:bān 材:cái 料:liào 冷:lěng 啊:a 吧:ba";
+
+const PYMAP = {};
+PY_SRC.split(' ').forEach(pair => {
+  const i = pair.indexOf(':');
+  if(i > 0) PYMAP[pair.slice(0,i)] = pair.slice(i+1);
+});
+function ruby(text){
+  return String(text).replace(/[\u4e00-\u9fff]/g, ch => {
+    const py = PYMAP[ch];
+    return py ? '<ruby>' + ch + '<rt>' + py + '</rt></ruby>' : ch;
+  });
+}
+
+const DICT = {
+  '坚持':{p:'jiānchí',e:'to persist',ex:'他每天都坚持走路上下班，所以身体一直很不错。',exEn:'He walks to work every day without fail, so he is always in good health.'},
+  '看法':{p:'kànfǎ',e:'opinion; view',ex:'我跟你的看法正好相反，感觉什么都说了，却都只说了一点点。',exEn:'My view is exactly the opposite of yours.'},
+  '否则':{p:'fuzé',e:'otherwise',ex:'你得先把外语学好，否则在国外和人交流都会有困难。',exEn:'Learn the foreign language well first, otherwise communication abroad will be difficult.'},
+  '只好':{p:'zhǐhǎo',e:'have to; can only',ex:'忽然刮起了大风，我们只好留在家里上网。',exEn:'A strong wind suddenly blew up, so we had no choice but to stay home online.'},
+  '然而':{p:"rán'ér",e:'however',ex:'笨人把简单的问题说复杂，然而聪明人能把复杂的问题解释得清楚而简单。',exEn:'A dull person makes simple things complex; however, a smart person explains complex things clearly and simply.'},
+  '顺序':{p:'shùnxù',e:'order; sequence',ex:'请把这些材料按照时间顺序放好，下班前交给我。',exEn:'Please arrange these materials in time order and hand them to me before work ends.'},
+  '温度':{p:'wēndù',e:'temperature',ex:'今天真冷啊，好像白天最高温度才2℃。',exEn:'It is really cold today; the daytime high seems to be only 2°C.'},
+  '厉害':{p:'lìhai',e:'formidable; intense',ex:'他的汉语说得很流利，真厉害!',exEn:'His Chinese is very fluent — really impressive!'},
+  '著名':{p:'zhùmíng',e:'famous',ex:'听说这次演出邀请了许多著名的演员，很精彩的。',exEn:'I heard this show invited many famous actors; it will be wonderful.'},
+  '猜':{p:'cāi',e:'to guess',ex:'我猜你也在忙，没打扰你吧?',exEn:'I guessed you were also busy; I did not disturb you, did I?'},
+  '也许':{p:'yěxǔ',e:'perhaps',ex:'有些人朋友不多，也许只有一两个，但他们永远能相互理解和支持。',exEn:'Some people have few friends, perhaps only one or two, but they always understand and support each other.'},
+  '任务':{p:'rènwu',e:'task; mission',ex:'我的看法是这个任务没有那么困难，关键是要找到最重要的问题。',exEn:'My view is that this task is not so difficult; the key is to find the most important problem.'},
+  '引起':{p:'ynqǐ',e:'to cause; to arouse',ex:'人与人之间如果缺少交流，很可能会引起不小的误会。',exEn:'If people lack communication, it may cause quite big misunderstandings.'},
+  '并且':{p:'bìngqiě',e:'and; also',ex:'半路上突然就下雨了，并且越下越大，一点儿停的意思都没有。',exEn:'On the way it suddenly rained, and it rained harder and harder, with no sign of stopping.'},
+  '规定':{p:'guīdìng',e:'rule; regulation',ex:'按照规定，五岁以下的儿童必须有大人陪同。',exEn:'According to the rules, children under five must be accompanied by an adult.'},
+  '商量':{p:'shāngliang',e:'to discuss',ex:'这件事我还没跟他商量呢，过几天再说吧。',exEn:'I have not discussed this with him yet; let us talk about it in a few days.'},
+  '意见':{p:'yìjiàn',e:'opinion; suggestion',ex:'大家还有什么好的主意或意见尽管提。',exEn:'Feel free to raise any good ideas or opinions.'},
+  '力气':{p:'lìqi',e:'strength',ex:'你们放心，我身体很好，还有力气搬。',exEn:'Do not worry; I am healthy and still have the strength to carry.'}
+};
+
+const MODES = [
+  {id:'vocab', zh:'词汇挑战', en:'Vocabulary', icon:'词'},
+  {id:'cloze', zh:'选词填空', en:'Cloze', icon:'填'},
+  {id:'order', zh:'排列顺序', en:'Ordering', icon:'序'},
+  {id:'reading', zh:'阅读理解', en:'Reading', icon:'读'},
+  {id:'build', zh:'完成句子', en:'Sentence Building', icon:'句'}
+];
+
+const LESSONS = [
+  {
+    id:11,
+    title:'读书好，读好书，好读书',
+    vocab:['坚持','看法','否则','只好','然而','顺序','温度','厉害','著名','猜'],
+    cloze:[
+      {t:'我们原计划去打篮球的，可是忽然刮起了大风，现在______留在家里上网了。', tEn:'We originally planned to play basketball, but suddenly a strong wind blew up, so now we ______ stay home and go online.', o:['否则','只好','看法','坚持','然而'], a:1, why:'只好 means "have no choice but to; can only".'},
+      {t:'我跟你的______正好相反，感觉什么都说了，却都只说了一点点。', tEn:'My ______ is exactly the opposite of yours; I feel like I said everything, but actually only said a little bit.', o:['否则','只好','看法','坚持','然而'], a:2, why:'看法 means "opinion; view".'},
+      {t:'笨人总是把简单的问题说复杂，______，聪明人却能把复杂的问题解释得清楚而简单。', tEn:'A dull person always makes simple problems complicated, ______, a smart person can explain complex problems clearly and simply.', o:['否则','只好','看法','坚持','然而'], a:4, why:'然而 introduces a contrast: "however".'},
+      {t:'我建议你暂时先别考虑出国留学，至少你得先把外语学好，______，在国外和人交流都会有困难。', tEn:'I suggest you not consider studying abroad for now; at least you need to learn the foreign language well first, ______, communicating with people abroad will be difficult.', o:['否则','只好','看法','坚持','然而'], a:0, why:'否则 means "otherwise".'}
+    ],
+    order:[
+      {parts:{A:'我们身边的图书越来越多',B:'只好选择其中特别感兴趣的来阅读',C:'而每个人时间是有限的'}, partsEn:{A:'There are more and more books around us',B:'We can only choose the ones we are especially interested in to read',C:'And everyone\'s time is limited'}, ans:'CAB', why:'Time is limited → More and more books → Can only choose interesting ones.'},
+      {parts:{A:'否则读书对自己就没有什么帮助了',B:'不能完全相信书本',C:'看书时应该有自己的想法和判断'}, partsEn:{A:'Otherwise reading will not be helpful to yourself',B:'You cannot completely believe books',C:'When reading, you should have your own thoughts and judgment'}, ans:'CBA', why:'Have your own judgment → Cannot completely believe books → Otherwise no help.'},
+      {parts:{A:'这样不但能使学生增长知识',B:'还能提高他们的理解能力和写作水平',C:'养成课外阅读的习惯很重要'}, partsEn:{A:'This can not only help students gain knowledge',B:'But also improve their comprehension and writing skills',C:'Developing the habit of extracurricular reading is important'}, ans:'CAB', why:'Developing habit is important → Not only gain knowledge → But also improve abilities.'}
+    ],
+    reading:[
+      {p:'他总说自己特别喜欢看书，可是这本书他看了一个月才看到第5页，也许是因为他工作太忙。但一个真正爱看书的人总能找出时间来阅读。', pEn:'He always says he especially likes reading, but he only reached page 5 of this book after a month, perhaps because he is too busy with work. But a person who truly loves reading can always find time to read.', q:'根据这段话，可以知道他：', qEn:'According to this passage, we can know that he:', o:['看书很认真','工作很忙','不是真正爱看书','没有时间看书'], a:2, why:'He says he likes reading, but only read 5 pages in a month, showing he is not truly a reading lover.'},
+      {p:'我刚刚收到王校长发给我的电子邮件，说他最近病了，咳嗽得很厉害，医生让他多休息，但他还是坚持工作，翻译了一本关于中国历史的书。', pEn:'I just received an email from Principal Wang, saying he has been sick recently, coughing severely. The doctor told him to rest more, but he still persisted in working and translated a book about Chinese history.', q:'根据这段话，可以知道王校长：', qEn:'According to this passage, we can know that Principal Wang:', o:['身体一直很好','工作很努力','电子邮件很多','爱读中国历史'], a:1, why:'He worked hard even when sick.'},
+      {p:'3月7日上午，我在体育馆打羽毛球时，丢了一个咖啡色书包，里面有笔记本电脑、钥匙和几本杂志，请拿到包的人与我联系。非常感谢!', pEn:'On the morning of March 7th, while I was playing badminton at the gym, I lost a brown schoolbag containing a laptop, keys, and several magazines. Please contact me if you found it. Thank you very much!', q:'这个人写这段话是为了：', qEn:'This person wrote this passage in order to:', o:['表示感谢','想打羽毛球','找他的东西','介绍他的书包'], a:2, why:'He lost his bag and wants to find it.'},
+      {p:'关于读书，有两点必须要注意：第一，应该养成爱阅读的好习惯。读书会让你的知识更丰富，生活更精彩。第二，自己不花时间去想，完全相信并且接受书上写的，这是不对的，因为书上的知识和想法并不总是正确的。否则，读书对自己就没什么帮助。', pEn:'About reading, there are two points to pay attention to: First, you should develop a good habit of loving reading. Reading will make your knowledge richer and life more wonderful. Second, if you don\'t spend time thinking and completely believe and accept what\'s written in books, that\'s wrong, because knowledge and ideas in books are not always correct. Otherwise, reading won\'t help you.', q:'根据这段话，读书要：', qEn:'According to this passage, when reading you should:', o:['相信写书的人','多做读书笔记','有自己的看法','经常帮助别人'], a:2, why:'Don\'t accept everything blindly; have your own views.'}
+    ],
+    build:[
+      {words:['你在','说明书','要','使用','之前','仔细阅读'], ans:[0,3,4,2,5,1], target:'你在使用之前要仔细阅读说明书。', targetEn:'You should carefully read the instructions before using.', why:'"在使用之前" indicates time condition.'},
+      {words:['页','这本','一共','多','小说','二百'], ans:[1,4,2,5,3,0], target:'这本小说一共二百多页。', targetEn:'This novel has over 200 pages in total.', why:'Quantity expression: over 200 pages.'},
+      {words:['这种','能','减轻','方法','有效地','压力'], ans:[0,3,1,4,2,5], target:'这种方法能有效地减轻压力。', targetEn:'This method can effectively reduce stress.', why:'"有效地" modifies "减轻".'}
+    ]
+  },
+  {
+    id:12,
+    title:'用心发现世界',
+    vocab:['也许','任务','引起','坚持','并且','规定','商量','温度','意见','力气'],
+    cloze:[
+      {t:'有些人朋友不多，______只有一两个，但他们永远能相互理解和支持。', tEn:'Some people don\'t have many friends, ______ only one or two, but they can always understand and support each other.', o:['并且','任务','引起','坚持','也许'], a:4, why:'也许 means "perhaps; maybe".'},
+      {t:'人与人之间如果缺少交流，很可能会______不小的误会。', tEn:'If there is a lack of communication between people, it is very likely to ______ quite big misunderstandings.', o:['并且','任务','引起','坚持','也许'], a:2, why:'引起误会 means "to cause misunderstanding".'},
+      {t:'我的看法是这个______没有那么困难，关键是要清楚我们主要想做什么，找到最重要的问题。', tEn:'My view is that this ______ is not that difficult; the key is to be clear about what we mainly want to do and find the most important problem.', o:['并且','任务','引起','坚持','也许'], a:1, why:'任务 means "task; mission".'},
+      {t:'出门的时候，天气还很好。没想到半路上突然就下雨了，______越下越大，一点儿停的意思都没有。', tEn:'When I went out, the weather was still good. Unexpectedly, it suddenly started raining on the way, ______ it rained harder and harder, with no sign of stopping at all.', o:['并且','任务','引起','坚持','也许'], a:0, why:'并且 adds information: "and; furthermore".'}
+    ],
+    order:[
+      {parts:{A:'这种事情一直在发生，谁也不能改变',B:'地球上每分钟都有新的生命出现',C:'也有老的生命死去'}, partsEn:{A:'This kind of thing keeps happening, no one can change it',B:'Every minute on Earth, new life appears',C:'And old life dies'}, ans:'BCA', why:'New life appears → Old life dies → This keeps happening.'},
+      {parts:{A:'很多人以为误会是小事，不去解决它',B:'其实相反，误会需要我们及时解释清楚',C:'两个人在一起，总会出现一些误会'}, partsEn:{A:'Many people think misunderstandings are small matters and don\'t resolve them',B:'Actually the opposite, misunderstandings need us to explain clearly in time',C:'When two people are together, some misunderstandings will always arise'}, ans:'CAB', why:'Misunderstandings will arise → People think they\'re small → Actually need to resolve.'},
+      {parts:{A:'人们常说"友谊地久天长"',B:'能够一直继续下去，直到永远',C:'意思是希望友好关系'}, partsEn:{A:'People often say "friendship lasts forever"',B:'Can continue on and on, until eternity',C:'Meaning they hope the friendly relationship'}, ans:'ACB', why:'Say this phrase → Meaning → Continue forever.'}
+    ],
+    reading:[
+      {p:'有些故事，不光能给人带来快乐，还有教育的作用，能使人们在笑过之后重新认识一些问题。', pEn:'Some stories can not only bring happiness to people, but also have an educational effect, enabling people to re-recognize some problems after laughing.', q:'这段话主要讲故事的：', qEn:'This passage mainly talks about stories\' :', o:['作用','能力','关键','历史'], a:0, why:'"教育的作用" talks about the function of stories.'},
+      {p:'这座楼一共有28层，为了节约您的时间，1号和2号电梯最高只能到16层；3号、4号电梯17层以下不停，直接到17-28层，如果您要到1-16层，请坐西边的1号和2号电梯。', pEn:'This building has 28 floors in total. To save your time, elevators 1 and 2 can only go up to floor 16; elevators 3 and 4 don\'t stop below floor 17, going directly to floors 17-28. If you want to go to floors 1-16, please take elevators 1 and 2 on the west side.', q:'1号电梯可以去哪一层?', qEn:'Which floor can elevator No. 1 go to?', o:['16','17','18','19'], a:0, why:'Elevator 1&2 can only go to floor 16.'},
+      {p:'三叶草的叶子一般为三个，但有时也会出现4个叶子的，这种4个叶子的叫"四叶草"，因为很少见，所以有人说，找到这种"四叶草"的人会得到幸福。', pEn:'Clover leaves usually have three, but sometimes 4-leaf ones appear. This 4-leaf type is called "four-leaf clover." Because it is rare, some say that people who find this "four-leaf clover" will get happiness.', q:'四叶草：', qEn:'Four-leaf clover:', o:['很香','非常矮','不常见','表示友谊'], a:2, why:'Because it is rare, it is uncommon.'},
+      {p:'有个人总是买最大号的鞋子穿，别人问他，他就会回答："商店里的大鞋小鞋是一样的价格，为什么不买大的呢?"然而他却忘记了一点，不合脚的鞋子会让他一生都不舒服。其实，不管什么，适合自己的才是最好的。', pEn:'There is a person who always buys the largest size shoes. When others ask him, he answers: "Big shoes and small shoes in the store are the same price, why not buy big ones?" However, he forgot one thing: shoes that don\'t fit will make him uncomfortable for life. Actually, no matter what, what suits you is the best.', q:'这段话主要告诉我们什么?', qEn:'What does this passage mainly tell us?', o:['不能粗心','合适最重要','要学会拒绝','要养成好习惯'], a:1, why:'The last sentence says: what fits you is best.'}
+    ],
+    build:[
+      {words:['这件事','他们','看法','完全相反','的','对于'], ans:[1,5,0,4,2,3], target:'他们对于这件事的看法完全相反。', targetEn:'Their views on this matter are completely opposite.', why:'"对于……的看法" is a common structure.'},
+      {words:['叶子','光','掉','树上的','已经','了'], ans:[3,0,4,2,1,5], target:'树上的叶子已经掉光了。', targetEn:'The leaves on the tree have already fallen off completely.', why:'"掉光了" indicates result.'},
+      {words:['他','态度','对','友好','非常','我的'], ans:[0,2,5,1,4,3], target:'他对我的态度非常友好。', targetEn:'His attitude toward me is very friendly.', why:'"对……的态度" is the core structure.'}
+    ]
+  }
+];
+
+const S = {
+  userName:'', userEntered:false,
+  lessonId:null, lesson:null,
+  inChallenge:false, modeIndex:0, qIndex:0,
+  questions:null, total:0, correct:0,
+  time:120, timer:null, locked:false,
+  orderSelected:[], buildPlaced:[], mistakes:[],
+  py:true, en:true,
+  timerEnabled:true
+};
+let introDone = false;
+const $ = id => document.getElementById(id);
+
+/* ============ NAME RAIN SYSTEM ============ */
+const RAIN_COLORS = ['#00e5ff','#ff2d78','#7c4dff','#00ff9d','#ffd60a','#ff4d00','#ff6ec7','#4deeea','#b967ff','#39ff14'];
+let rainInterval = null;
+let rainDrops = [];
+
+function startNameRain(name){
+  stopNameRain();
+  if(!name) return;
+  const container = $('nameRain');
+  container.innerHTML = '';
+  rainDrops = [];
+  
+  for(let i = 0; i < 20; i++){
+    createRainDrop(name, container, true);
+  }
+  
+  rainInterval = setInterval(() => {
+    if(rainDrops.length < 25){
+      createRainDrop(name, container, false);
+    }
+  }, 500);
+}
+
+function createRainDrop(name, container, stagger){
+  const drop = document.createElement('div');
+  drop.className = 'rain-drop';
+  drop.textContent = name;
+  
+  const x = Math.random() * 100;
+  const duration = 5 + Math.random() * 10;
+  const delay = stagger ? Math.random() * 12 : 0;
+  const size = 16 + Math.random() * 28;
+  const rot = (Math.random() - 0.5) * 40;
+  const opacity = 0.4 + Math.random() * 0.6;
+  const color = RAIN_COLORS[Math.floor(Math.random() * RAIN_COLORS.length)];
+  
+  drop.style.left = x + '%';
+  drop.style.fontSize = size + 'px';
+  drop.style.color = color;
+  drop.style.animationDuration = duration + 's';
+  drop.style.animationDelay = delay + 's';
+  drop.style.setProperty('--rot', rot + 'deg');
+  drop.style.opacity = opacity;
+  
+  container.appendChild(drop);
+  rainDrops.push(drop);
+  
+  setTimeout(() => {
+    if(drop.parentNode){
+      drop.parentNode.removeChild(drop);
+      const idx = rainDrops.indexOf(drop);
+      if(idx > -1) rainDrops.splice(idx, 1);
+      if(S.userEntered && S.userName){
+        createRainDrop(S.userName, container, false);
+      }
+    }
+  }, (duration + delay) * 1000);
+}
+
+function stopNameRain(){
+  if(rainInterval){
+    clearInterval(rainInterval);
+    rainInterval = null;
+  }
+  const container = $('nameRain');
+  if(container) container.innerHTML = '';
+  rainDrops = [];
+}
+
+/* ============ INTRO ============ */
+(function buildIntro(){
+  const row = $('digitRow');
+  const digits = '20230011'.split('');
+  
+  digits.forEach((ch,i) => {
+    const s = document.createElement('span');
+    s.className = 'digit'; 
+    s.textContent = ch;
+    s.style.setProperty('--d',(0.3 + i * 0.2).toFixed(2) + 's');
+    
+    s.addEventListener('animationend', function handler(e){
+      if(e.animationName !== 'digitSlideIn') return;
+      s.removeEventListener('animationend', handler);
+      s.classList.add('assembled');
+    });
+    
+    row.appendChild(s);
+  });
+  
+  setTimeout(() => { 
+    if(!introDone) goName(); 
+  }, 6500);
+})();
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  $(id).classList.remove('hidden');
+}
+function shuffle(arr){ return [...arr].sort(() => Math.random() - 0.5); }
+function getLesson(id){ return LESSONS.find(l => l.id === id); }
+function currentMode(){ return MODES[S.modeIndex]; }
+function currentQuestions(){ return S.questions[currentMode().id]; }
+function currentQ(){ return currentQuestions()[S.qIndex]; }
+
+function updateHud(){
+  $('hud').classList.toggle('hidden', !S.userEntered);
+  $('hudUser').textContent = S.userName ? '· ' + S.userName : '';
+  $('hudLesson').textContent = S.lesson ? 'Lesson ' + S.lesson.id : '';
+  $('timerPill').classList.toggle('hidden', !S.inChallenge);
+  $('timerPill').classList.toggle('low', S.time <= 15 && S.timerEnabled);
+  $('timerPill').classList.toggle('off', !S.timerEnabled);
+  if(S.timerEnabled){
+    $('timerPill').innerHTML = '<span id="timeVal">' + Math.max(0, Math.ceil(S.time)) + '</span>s';
+  } else {
+    $('timerPill').innerHTML = 'OFF';
+  }
+}
+function applyToggles(){
+  document.body.classList.toggle('no-pinyin', !S.py);
+  document.body.classList.toggle('no-english', !S.en);
+  $('pyToggle').classList.toggle('on', S.py);
+  $('enToggle').classList.toggle('on', S.en);
+  localStorage.setItem('hsk_py', S.py ? '1' : '0');
+  localStorage.setItem('hsk_en', S.en ? '1' : '0');
+}
+$('pyToggle').onclick = () => { S.py = !S.py; applyToggles(); };
+$('enToggle').onclick = () => { S.en = !S.en; applyToggles(); };
+
+function toggleTimerSetting(){
+  S.timerEnabled = !S.timerEnabled;
+  $('timerToggle').classList.toggle('on', S.timerEnabled);
+  localStorage.setItem('hsk_timer', S.timerEnabled ? '1' : '0');
+}
+
+function goName(){
+  if(introDone) return;
+  introDone = true;
+  $('introFlash').classList.add('go');
+  const intro = $('introScreen');
+  intro.classList.add('out');
+  setTimeout(() => show('nameScreen'), 850);
+}
+
+function saveName(){
+  S.userName = $('nameInput').value.trim() || 'Player';
+  S.userEntered = true;
+  localStorage.setItem('hsk_name', S.userName);
+  startNameRain(S.userName);
+  renderLessons();
+  show('lessonScreen');
+  updateHud();
+}
+
+function goToName(){
+  S.userEntered = false;
+  S.userName = '';
+  S.lesson = null;
+  S.inChallenge = false;
+  $('nameInput').value = '';
+  stopNameRain();
+  show('nameScreen');
+  $('hud').classList.add('hidden');
+}
+
+function loadLB(){
+  try{ return JSON.parse(localStorage.getItem('hsk_lb') || '[]'); }catch(e){ return []; }
+}
+
+function lbRowHTML(e, rank, isMe){
+  return `
+    <div class="lb-row${isMe ? ' me' : ''}">
+      <span class="lb-rank">#${rank}</span>
+      <span class="lb-name">${e.n}</span>
+      <span class="lb-score">${e.s}/${e.t}</span>
+      <span class="lb-acc">${e.a}%</span>
+    </div>
+  `;
+}
+
+function recordScore(){
+  const acc = S.total ? Math.round((S.correct / S.total) * 100) : 0;
+  const entry = {n:S.userName, s:S.correct, t:S.total, a:acc, l:S.lesson.id, d:Date.now()};
+  let lb = loadLB();
+  lb.push(entry);
+  lb.sort((x,y) => y.s - x.s || y.a - x.a || x.d - y.d);
+  lb = lb.slice(0,50);
+  localStorage.setItem('hsk_lb', JSON.stringify(lb));
+  return {lb, rank: lb.indexOf(entry) + 1};
+}
+
+function renderDualLB(){
+  const el = $('lbDual');
+  const allLb = loadLB();
+  
+  const lb11 = allLb.filter(e => e.l === 11).sort((x,y) => y.s - x.s || y.a - x.a || x.d - y.d).slice(0,5);
+  const lb12 = allLb.filter(e => e.l === 12).sort((x,y) => y.s - x.s || y.a - x.a || x.d - y.d).slice(0,5);
+  
+  el.classList.remove('hidden');
+  
+  let html = '';
+  
+  html += '<div class="lb-panel"><h3>Lesson 11 · Top 5</h3>';
+  if(lb11.length === 0){
+    html += '<div class="lb-note">No scores yet for Lesson 11.</div>';
+  } else {
+    lb11.forEach((e,i) => {
+      const isMe = e.n === S.userName && e.d >= (Date.now() - 60000);
+      html += lbRowHTML(e, i+1, isMe);
+    });
+  }
+  html += '</div>';
+  
+  html += '<div class="lb-panel"><h3>Lesson 12 · Top 5</h3>';
+  if(lb12.length === 0){
+    html += '<div class="lb-note">No scores yet for Lesson 12.</div>';
+  } else {
+    lb12.forEach((e,i) => {
+      const isMe = e.n === S.userName && e.d >= (Date.now() - 60000);
+      html += lbRowHTML(e, i+1, isMe);
+    });
+  }
+  html += '</div>';
+  
+  el.innerHTML = html;
+}
+
+function renderLessons(){
+  $('lessonCards3d').innerHTML = LESSONS.map(l => `
+    <div class="lesson-card-3d" onclick="selectLesson(${l.id})">
+      <div class="lesson-card-face">
+        <div class="lesson-card-number">HSK4 · LESSON ${l.id}</div>
+        <div class="lesson-card-title">${l.title}</div>
+        <div class="lesson-card-sub">Click circles to study words, then take the challenge</div>
+        <div class="lesson-card-chips">
+          ${l.vocab.slice(0,5).map(w => {
+            const d = DICT[w] || {};
+            return `<div class="lesson-card-chip"><span class="hanzi">${w}</span><span class="pinyin">${d.p||''}</span></div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+  renderDualLB();
+}
+
+function selectLesson(id){
+  S.lessonId = id;
+  const l = getLesson(id);
+  $('lessonDetail').innerHTML = `
+    <h2 class="screen-title hanzi">Lesson ${l.id}</h2>
+    <div class="lesson-title" style="text-align:center;font-size:34px;margin-bottom:10px;">${l.title}</div>
+    <div class="subtle" style="margin:0 auto 6px;">Click any circle to study the word. Then start the challenge.</div>
+    
+    <div class="subtle" style="margin-top:24px;">Lesson Vocabulary — Click to Study:</div>
+    <div class="vocab-circle-container">
+      ${l.vocab.map((w,idx) => {
+        const d = DICT[w] || {};
+        return `
+          <div class="vocab-circle" onclick="openWordDetail('${w}')">
+            <div class="vocab-circle-hanzi hanzi">${w}</div>
+            <div class="vocab-circle-pinyin">${d.p||''}</div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  show('lessonDetailScreen');
+  updateHud();
+}
+
+function openWordDetail(word){
+  const d = DICT[word] || {};
+  $('wordDetailHanzi').textContent = word;
+  $('wordDetailPinyin').textContent = d.p || '';
+  $('wordDetailMeaning').textContent = d.e || '';
+  
+  let examplesHTML = '';
+  if(d.ex){
+    examplesHTML += `
+      <div class="word-detail-example">
+        <div class="word-detail-example-label">Example 1</div>
+        <div class="word-detail-example-cn hanzi-text">${ruby(d.ex)}</div>
+        <div class="word-detail-example-en">${d.exEn || ''}</div>
+      </div>
+    `;
+  }
+  if(d.ex){
+    examplesHTML += `
+      <div class="word-detail-example">
+        <div class="word-detail-example-label">Example 2</div>
+        <div class="word-detail-example-cn hanzi-text">${ruby(d.ex)}</div>
+        <div class="word-detail-example-en">${d.exEn || ''}</div>
+      </div>
+    `;
+  }
+  $('wordDetailExamples').innerHTML = examplesHTML;
+  
+  $('wordDetailOverlay').classList.add('active');
+}
+
+function closeWordDetail(){
+  $('wordDetailOverlay').classList.remove('active');
+}
+
+function goLessons(){
+  pauseTimer();
+  S.inChallenge = false;
+  renderLessons();
+  show('lessonScreen');
+  updateHud();
+}
+
+function makeVocabQ(word, lesson){
+  const info = DICT[word] || {p:'', e:''};
+  const distractors = shuffle(lesson.vocab.filter(w => w !== word)).slice(0,3).map(w => (DICT[w]||{e:''}).e).filter(Boolean);
+  const options = shuffle([info.e, ...distractors]);
+  return {type:'vocab', word, o:options, a:options.indexOf(info.e), why:`${word} (${info.p}) means "${info.e}". Example: ${info.ex||''}`};
+}
+function buildQuestions(lesson){
+  return {
+    vocab: shuffle(lesson.vocab).slice(0,6).map(w => makeVocabQ(w, lesson)),
+    cloze: lesson.cloze,
+    order: lesson.order,
+    reading: lesson.reading,
+    build: lesson.build
+  };
+}
+
+function startChallenge(){
+  S.lesson = getLesson(S.lessonId);
+  S.inChallenge = false;
+  S.questions = buildQuestions(S.lesson);
+  S.total = Object.values(S.questions).reduce((s,a) => s + a.length, 0);
+  S.correct = 0; S.mistakes = [];
+  beginExam();
+}
+function beginExam(){
+  S.inChallenge = true;
+  S.modeIndex = 0; S.qIndex = 0;
+  S.time = 120; S.locked = false;
+  show('quizScreen');
+  updateHud();
+  renderCurrent();
+  if(S.timerEnabled) startTimer();
+}
+function retryLesson(){ startChallenge(); }
+
+function startTimer(){
+  pauseTimer();
+  if(S.time <= 0){ endChallenge('time'); return; }
+  S.timer = setInterval(() => {
+    S.time -= 1;
+    updateHud();
+    if(S.time <= 0){ pauseTimer(); endChallenge('time'); }
+  }, 1000);
+}
+function pauseTimer(){ if(S.timer){ clearInterval(S.timer); S.timer = null; } }
+
+function renderCurrent(){
+  if(!S.inChallenge) return;
+  const qs = currentQuestions();
+  if(S.qIndex >= qs.length){ nextMode(); return; }
+
+  S.locked = false; S.orderSelected = []; S.buildPlaced = [];
+  $('modeLabel').textContent = currentMode().zh + ' · ' + currentMode().en;
+  $('qLabel').textContent = 'Q ' + (S.qIndex+1) + '/' + qs.length;
+  $('feedback').className = 'feedback hidden';
+  $('options').innerHTML = '';
+  $('actionArea').innerHTML = '';
+
+  const id = currentMode().id;
+  if(id === 'vocab') renderVocab();
+  if(id === 'cloze') renderCloze();
+  if(id === 'order') renderOrder();
+  if(id === 'reading') renderReading();
+  if(id === 'build') renderBuild();
+
+  updateHud();
+}
+
+function nextMode(){
+  pauseTimer();
+  const completed = MODES[S.modeIndex];
+  S.modeIndex += 1; S.qIndex = 0;
+  if(S.modeIndex >= MODES.length){ endChallenge('complete'); return; }
+  const next = MODES[S.modeIndex];
+  $('transText').textContent = completed.zh + ' 完成';
+  $('transSub').textContent = 'Next: ' + next.zh + ' · ' + next.en;
+  show('transitionScreen');
+  setTimeout(() => { show('quizScreen'); renderCurrent(); if(S.timerEnabled) startTimer(); }, 1400);
+}
+
+function endChallenge(reason){
+  pauseTimer();
+  S.inChallenge = false;
+  const acc = S.total ? Math.round((S.correct / S.total) * 100) : 0;
+
+  $('resultTitle').textContent = reason === 'time' ? 'Time Up' : 'Challenge Complete';
+  $('resultSub').textContent = reason === 'time'
+    ? 'Timer reached zero. Try again!'
+    : 'Lesson ' + S.lesson.id + ' · ' + S.lesson.title;
+
+  $('resultStats').innerHTML = `
+    <div class="stat"><div class="num">${S.correct}</div><div class="label">Correct</div></div>
+    <div class="stat"><div class="num">${S.total}</div><div class="label">Total</div></div>
+    <div class="stat"><div class="num">${acc}%</div><div class="label">Accuracy</div></div>
+  `;
+
+  const ma = $('mistakeArea');
+  if(S.mistakes.length){
+    ma.classList.remove('hidden');
+    let html = '<h3>Review · 复习 (' + S.mistakes.length + ' missed)</h3>';
+    S.mistakes.forEach((m, i) => {
+      html += `
+        <div class="mistake-item">
+          <div class="mistake-mode-label">${m.mode || 'Question'} ${i+1}</div>
+          <div class="mistake-question hanzi-text">${ruby(m.question || '')}</div>
+          ${m.questionEn ? '<div class="mistake-question-en">' + m.questionEn + '</div>' : ''}
+          <div class="mistake-answers">
+            ${m.userAnswer ? '<span class="mistake-your-answer">Your answer: ' + m.userAnswer + '</span>' : ''}
+            <span class="mistake-correct-answer">Correct: ${m.correctAnswer || ''}</span>
+          </div>
+          <div class="mistake-explanation">${m.why || ''}</div>
+        </div>
+      `;
+    });
+    ma.innerHTML = html;
+  }else{
+    ma.classList.add('hidden');
+    ma.innerHTML = '';
+  }
+
+  const {lb, rank} = recordScore();
+
+  show('resultScreen');
+  updateHud();
+}
+
+function processAnswer(good, msg, mistakeData){
+  S.locked = true;
+  pauseTimer();
+  if(good){ 
+    S.correct += 1; 
+    if(S.timerEnabled) S.time += 3; 
+  }
+  else if(mistakeData){ 
+    S.mistakes.push(mistakeData); 
+  }
+  updateHud();
+
+  const f = $('feedback');
+  f.classList.remove('hidden');
+  f.classList.add(good ? 'good' : 'bad');
+  f.innerHTML = '<div class="verdict">' + (good ? 'Correct!' + (S.timerEnabled ? ' +3s' : '') : 'Not quite') + '</div><div>' + (msg || '') + '</div>';
+
+  setTimeout(() => { S.qIndex += 1; renderCurrent(); if(S.timerEnabled) startTimer(); }, 1350);
+}
+
+function renderOptions(options, innerFn){
+  const letters = ['A','B','C','D','E'];
+  $('options').innerHTML = '';
+  options.forEach((opt,i) => {
+    const b = document.createElement('button');
+    b.className = 'opt';
+    b.innerHTML = '<span class="badge">' + letters[i] + '</span><div class="opt-content">' + innerFn(opt,i) + '</div>';
+    b.onclick = () => pickMC(i);
+    $('options').appendChild(b);
+  });
+}
+function renderVocab(){
+  const q = currentQ();
+  const d = DICT[q.word] || {};
+  $('questionArea').innerHTML = `
+    <div class="q-sub">Choose the correct meaning.</div>
+    <div class="q-prompt-hanzi hanzi">${ruby(q.word)}</div>
+    <div class="pinyin-helper" style="text-align:center;margin-top:8px;">${d.p||''}</div>
+  `;
+  renderOptions(q.o, txt => '<span>' + txt + '</span>');
+}
+function renderCloze(){
+  const q = currentQ();
+  $('questionArea').innerHTML = `
+    <div class="q-sub">Choose the best word.</div>
+    <div class="q-text hanzi-text">${ruby(q.t).replace('______','<span class="blank">______</span>')}</div>
+    ${q.tEn ? '<div class="q-sub" style="font-size:14px;margin-top:-8px;">' + q.tEn.replace('______','______') + '</div>' : ''}
+  `;
+  renderOptions(q.o, word => {
+    const d = DICT[word] || {};
+    return '<span class="option-hanzi">' + ruby(word) + '</span><span class="pinyin-helper">' + (d.p||'') + '</span><span class="english-helper">' + (d.e||'') + '</span>';
+  });
+}
+function renderReading(){
+  const q = currentQ();
+  $('questionArea').innerHTML = `
+    <div class="passage hanzi-text">${ruby(q.p)}</div>
+    ${q.pEn ? '<div class="q-sub" style="font-size:14px;margin-top:-8px;">' + q.pEn + '</div>' : ''}
+    <div class="q-text hanzi-text">${ruby(q.q)}</div>
+    ${q.qEn ? '<div class="q-sub" style="font-size:14px;margin-top:-8px;">' + q.qEn + '</div>' : ''}
+  `;
+  renderOptions(q.o, txt => '<span class="option-hanzi">' + ruby(txt) + '</span>');
+}
+function pickMC(i){
+  if(S.locked) return;
+  const q = currentQ();
+  const good = i === q.a;
+  document.querySelectorAll('.opt').forEach((b,idx) => {
+    b.disabled = true;
+    if(idx === q.a) b.classList.add('correct');
+    else if(idx === i) b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+  const correctText = q.o[q.a];
+  const label = q.word || q.q || q.t || 'Question';
+  const modeName = currentMode().zh + ' · ' + currentMode().en;
+  processAnswer(good, q.why || ('Correct: ' + correctText), 
+    good ? null : {
+      mode: modeName,
+      question: q.t || q.q || (q.word ? 'What does "' + q.word + '" mean?' : ''),
+      questionEn: q.tEn || q.qEn || (q.word ? 'What does "' + q.word + '" mean?' : ''),
+      userAnswer: q.o[i],
+      correctAnswer: correctText,
+      why: q.why || ''
+    }
+  );
+}
+
+function renderOrder(){
+  const q = currentQ();
+  $('questionArea').innerHTML = `
+    <div class="q-sub">Tap A/B/C in correct order.</div>
+    <div class="order-parts">
+      ${Object.entries(q.parts).map(([label,text]) => `
+        <button class="order-part" id="order-${label}" onclick="toggleOrderPart('${label}')">
+          <span class="badge">${label}</span>
+          <span class="txt">${ruby(text)}</span>
+        </button>
+      `).join('')}
+    </div>
+    <div class="order-seq" id="orderSeq"></div>
+  `;
+  $('actionArea').innerHTML = '<button class="btn ghost small" onclick="resetOrder()">Reset</button>';
+  updateOrderUI();
+}
+function toggleOrderPart(label){
+  if(S.locked) return;
+  const idx = S.orderSelected.indexOf(label);
+  if(idx >= 0) S.orderSelected.splice(idx,1);
+  else if(S.orderSelected.length < 3) S.orderSelected.push(label);
+  updateOrderUI();
+  if(S.orderSelected.length === 3) setTimeout(checkOrder, 260);
+}
+function resetOrder(){ if(S.locked) return; S.orderSelected = []; updateOrderUI(); }
+function updateOrderUI(){
+  ['A','B','C'].forEach(l => {
+    const el = $('order-' + l);
+    if(el) el.classList.toggle('selected', S.orderSelected.includes(l));
+  });
+  const seq = $('orderSeq');
+  if(seq) seq.textContent = S.orderSelected.join(' ');
+}
+function checkOrder(){
+  if(S.locked || S.orderSelected.length !== 3) return;
+  const q = currentQ();
+  const guess = S.orderSelected.join('');
+  const good = guess === q.ans;
+  const modeName = currentMode().zh + ' · ' + currentMode().en;
+  const questionText = 'Order the sentences correctly';
+  processAnswer(good, good ? q.why : ('Correct order: ' + q.ans), 
+    good ? null : {
+      mode: modeName,
+      question: questionText,
+      questionEn: questionText,
+      userAnswer: guess,
+      correctAnswer: q.ans,
+      why: q.why || ''
+    }
+  );
+}
+
+function renderBuild(){
+  $('questionArea').innerHTML = `
+    <div class="q-sub">Tap words to build sentence.</div>
+    <div class="build-answer" id="buildAnswer"></div>
+    <div class="build-bank" id="buildBank"></div>
+  `;
+  $('actionArea').innerHTML = `
+    <button class="btn small" id="checkBuild" onclick="checkBuild()" disabled>Check</button>
+    <button class="btn ghost small" onclick="resetBuild()">Reset</button>
+  `;
+  renderBuildAreas();
+}
+function renderBuildAreas(){
+  const q = currentQ();
+  $('buildAnswer').innerHTML = S.buildPlaced.length
+    ? S.buildPlaced.map((idx,pos) => '<button class="build-chip placed" onclick="clickBuildAnswer(' + pos + ')">' + ruby(q.words[idx]) + '</button>').join('')
+    : '<span class="build-placeholder">Tap words below</span>';
+  $('buildBank').innerHTML = q.words
+    .map((w,i) => ({w,i}))
+    .filter(it => !S.buildPlaced.includes(it.i))
+    .map(it => '<button class="build-chip" onclick="clickBuildBank(' + it.i + ')">' + ruby(it.w) + '</button>')
+    .join('');
+  $('checkBuild').disabled = S.buildPlaced.length !== q.words.length;
+}
+function clickBuildBank(i){ if(S.locked) return; if(!S.buildPlaced.includes(i)){ S.buildPlaced.push(i); renderBuildAreas(); } }
+function clickBuildAnswer(pos){ if(S.locked) return; S.buildPlaced.splice(pos,1); renderBuildAreas(); }
+function resetBuild(){ if(S.locked) return; S.buildPlaced = []; renderBuildAreas(); }
+function checkBuild(){
+  if(S.locked) return;
+  const q = currentQ();
+  if(S.buildPlaced.length !== q.words.length) return;
+  const good = JSON.stringify(S.buildPlaced) === JSON.stringify(q.ans);
+  const userSentence = S.buildPlaced.map(i => q.words[i]).join('');
+  const modeName = currentMode().zh + ' · ' + currentMode().en;
+  processAnswer(good, good ? q.why : ('Correct: ' + q.target), 
+    good ? null : {
+      mode: modeName,
+      question: 'Build the correct sentence',
+      questionEn: 'Build the correct sentence',
+      userAnswer: userSentence,
+      correctAnswer: q.target,
+      why: q.why || ''
+    }
+  );
+}
+
+(function init(){
+  const savedName = localStorage.getItem('hsk_name');
+  if(savedName){
+    $('nameInput').value = savedName;
+    S.userName = savedName;
+  }
+  S.py = localStorage.getItem('hsk_py') !== '0';
+  S.en = localStorage.getItem('hsk_en') !== '0';
+  S.timerEnabled = localStorage.getItem('hsk_timer') !== '0';
+  $('timerToggle').classList.toggle('on', S.timerEnabled);
+  applyToggles();
+})();
+</script>
+</body>
+</html>
